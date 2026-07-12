@@ -1,0 +1,808 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>茶道具帖</title>
+<style>
+  :root {
+    --bg: #f6f3ec;
+    --card: #ffffff;
+    --ink: #3a3226;
+    --sub: #8a7f6d;
+    --accent: #7a5c3e;
+    --accent-light: #b09877;
+    --matcha: #6b7d4f;
+    --line: #e2dccf;
+    --danger: #a04a3a;
+    --shadow: 0 2px 8px rgba(58,50,38,.08);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body {
+    font-family: "Hiragino Mincho ProN", "Yu Mincho", serif;
+    background: var(--bg);
+    color: var(--ink);
+    min-height: 100vh;
+    padding-bottom: 80px;
+  }
+  button, input, textarea, select { font-family: inherit; font-size: 16px; color: var(--ink); }
+  button { cursor: pointer; }
+
+  /* ===== ヘッダー ===== */
+  header {
+    background: var(--accent);
+    color: #fdf9f0;
+    padding: 14px 16px 10px;
+    position: sticky; top: 0; z-index: 50;
+    box-shadow: var(--shadow);
+  }
+  header h1 { font-size: 20px; font-weight: 600; letter-spacing: .3em; text-align: center; }
+  .tabs {
+    display: flex; gap: 6px; margin-top: 10px;
+  }
+  .tab-btn {
+    flex: 1; padding: 9px 4px; border: none; border-radius: 8px 8px 0 0;
+    background: rgba(255,255,255,.15); color: #fdf9f0; font-size: 14px; letter-spacing: .1em;
+  }
+  .tab-btn.active { background: var(--bg); color: var(--accent); font-weight: 600; }
+
+  main { max-width: 900px; margin: 0 auto; padding: 14px 12px; }
+
+  /* ===== ツールバー ===== */
+  .toolbar { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+  .search-row { display: flex; gap: 8px; }
+  .search-row input {
+    flex: 1; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--card);
+  }
+  .chip-row { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; -webkit-overflow-scrolling: touch; }
+  .chip {
+    flex-shrink: 0; padding: 6px 14px; border-radius: 999px; border: 1px solid var(--line);
+    background: var(--card); color: var(--sub); font-size: 13px; white-space: nowrap;
+  }
+  .chip.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .chip.tag-chip.active { background: var(--matcha); border-color: var(--matcha); }
+  .chip.season-chip.active { background: #5a6c86; border-color: #5a6c86; }
+
+  /* ===== カード一覧 ===== */
+  .grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px;
+  }
+  .card {
+    background: var(--card); border-radius: 12px; overflow: hidden; box-shadow: var(--shadow);
+    border: 1px solid var(--line); position: relative;
+  }
+  .card .thumb {
+    width: 100%; aspect-ratio: 1; object-fit: cover; display: block; background: #eee9dd;
+  }
+  .card .no-photo {
+    width: 100%; aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
+    background: #eee9dd; color: var(--accent-light); font-size: 34px;
+  }
+  .card .info { padding: 8px 10px 10px; }
+  .card .cat { font-size: 11px; color: var(--matcha); letter-spacing: .1em; }
+  .card .name { font-size: 14px; font-weight: 600; margin-top: 2px; line-height: 1.4;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .card .tags { margin-top: 4px; display: flex; flex-wrap: wrap; gap: 3px; }
+  .card .tags span {
+    font-size: 10px; background: #f0ead9; color: var(--sub); padding: 2px 7px; border-radius: 999px;
+  }
+  .card.selectable.selected { outline: 3px solid var(--matcha); }
+  .card .check-mark {
+    display: none; position: absolute; top: 6px; right: 6px; width: 26px; height: 26px;
+    border-radius: 50%; background: var(--matcha); color: #fff; font-size: 15px;
+    align-items: center; justify-content: center;
+  }
+  .card.selectable.selected .check-mark { display: flex; }
+
+  .empty { text-align: center; color: var(--sub); padding: 50px 20px; font-size: 14px; line-height: 2; }
+
+  /* ===== FAB ===== */
+  .fab {
+    position: fixed; right: 18px; bottom: 22px; width: 58px; height: 58px; border-radius: 50%;
+    background: var(--accent); color: #fff; font-size: 30px; border: none;
+    box-shadow: 0 4px 14px rgba(58,50,38,.3); z-index: 40; line-height: 1;
+  }
+
+  /* ===== モーダル ===== */
+  .modal-bg {
+    display: none; position: fixed; inset: 0; background: rgba(40,33,22,.5); z-index: 100;
+    align-items: flex-end; justify-content: center;
+  }
+  .modal-bg.open { display: flex; }
+  .modal {
+    background: var(--bg); width: 100%; max-width: 640px; max-height: 92vh; overflow-y: auto;
+    border-radius: 18px 18px 0 0; padding: 18px 16px 40px; -webkit-overflow-scrolling: touch;
+  }
+  @media (min-width: 680px) {
+    .modal-bg { align-items: center; }
+    .modal { border-radius: 18px; max-height: 88vh; }
+  }
+  .modal h2 { font-size: 17px; letter-spacing: .15em; margin-bottom: 14px; color: var(--accent); }
+  .field { margin-bottom: 13px; }
+  .field label { display: block; font-size: 12px; color: var(--sub); margin-bottom: 4px; letter-spacing: .08em; }
+  .field input, .field textarea, .field select {
+    width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--card);
+  }
+  .field textarea { min-height: 70px; resize: vertical; }
+  .field-row { display: flex; gap: 10px; }
+  .field-row .field { flex: 1; }
+
+  .photo-strip { display: flex; gap: 8px; overflow-x: auto; padding: 4px 0; }
+  .photo-strip .ph {
+    position: relative; flex-shrink: 0;
+  }
+  .photo-strip img { width: 84px; height: 84px; object-fit: cover; border-radius: 10px; border: 1px solid var(--line); }
+  .photo-strip .del-ph {
+    position: absolute; top: -6px; right: -6px; width: 22px; height: 22px; border-radius: 50%;
+    background: var(--danger); color: #fff; border: none; font-size: 12px; line-height: 1;
+  }
+  .add-photo-btn {
+    width: 84px; height: 84px; flex-shrink: 0; border: 2px dashed var(--accent-light); border-radius: 10px;
+    background: none; color: var(--accent-light); font-size: 26px;
+  }
+
+  .tag-suggest { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
+  .tag-suggest button {
+    font-size: 12px; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--line);
+    background: var(--card); color: var(--sub);
+  }
+
+  .btn { padding: 12px 18px; border-radius: 10px; border: none; font-size: 15px; letter-spacing: .1em; }
+  .btn-primary { background: var(--accent); color: #fff; width: 100%; }
+  .btn-ghost { background: none; border: 1px solid var(--line); color: var(--sub); width: 100%; }
+  .btn-danger-link { background: none; border: none; color: var(--danger); font-size: 13px; width: 100%; padding: 12px; }
+  .modal .btns { display: flex; flex-direction: column; gap: 8px; margin-top: 16px; }
+
+  /* ===== 詳細表示 ===== */
+  .detail-photos { display: flex; gap: 8px; overflow-x: auto; margin-bottom: 12px; }
+  .detail-photos img { height: 220px; border-radius: 12px; border: 1px solid var(--line); flex-shrink: 0; max-width: 100%; object-fit: contain; background:#fff; }
+  .detail-title { font-size: 20px; font-weight: 600; }
+  .detail-cat { color: var(--matcha); font-size: 13px; letter-spacing: .15em; margin-bottom: 2px; }
+  .detail-tags { display: flex; flex-wrap: wrap; gap: 5px; margin: 8px 0 12px; }
+  .detail-tags span { font-size: 12px; background: #f0ead9; color: var(--sub); padding: 3px 10px; border-radius: 999px; }
+  .kv { border-top: 1px solid var(--line); padding: 9px 2px; display: flex; font-size: 14px; }
+  .kv .k { width: 90px; flex-shrink: 0; color: var(--sub); font-size: 12px; padding-top: 2px; }
+  .kv .v { flex: 1; white-space: pre-wrap; line-height: 1.6; }
+
+  .care-list { margin-top: 6px; }
+  .care-item {
+    background: var(--card); border: 1px solid var(--line); border-radius: 10px;
+    padding: 9px 12px; margin-bottom: 7px; font-size: 14px; display: flex; gap: 10px; align-items: flex-start;
+  }
+  .care-item .cd { color: var(--matcha); font-size: 12px; flex-shrink: 0; padding-top: 2px; }
+  .care-item .ct { flex: 1; line-height: 1.6; white-space: pre-wrap; }
+  .care-item .cx { background: none; border: none; color: var(--sub); font-size: 15px; padding: 0 2px; }
+  .care-add { display: flex; gap: 7px; margin-top: 8px; }
+  .care-add input[type=date] { width: 128px; flex-shrink: 0; padding: 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--card); font-size: 13px; }
+  .care-add input[type=text] { flex: 1; min-width: 0; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--card); font-size: 14px; }
+  .care-add button { padding: 8px 14px; border-radius: 8px; border: none; background: var(--matcha); color: #fff; font-size: 14px; flex-shrink: 0; }
+
+  h3.sec { font-size: 13px; color: var(--accent); letter-spacing: .15em; margin: 18px 0 6px; border-left: 3px solid var(--accent); padding-left: 8px; }
+
+  /* ===== 取り合わせ ===== */
+  .set-card {
+    background: var(--card); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow);
+    padding: 14px; margin-bottom: 12px;
+  }
+  .set-card .set-name { font-size: 16px; font-weight: 600; letter-spacing: .05em; }
+  .set-card .set-memo { font-size: 13px; color: var(--sub); margin-top: 3px; line-height: 1.6; white-space: pre-wrap; }
+  .set-thumbs { display: flex; gap: 7px; overflow-x: auto; margin-top: 10px; padding-bottom: 4px; }
+  .set-thumbs .st { flex-shrink: 0; text-align: center; width: 76px; }
+  .set-thumbs img, .set-thumbs .st-no {
+    width: 76px; height: 76px; object-fit: cover; border-radius: 10px; border: 1px solid var(--line);
+    background: #eee9dd; display: flex; align-items: center; justify-content: center; color: var(--accent-light); font-size: 22px;
+  }
+  .set-thumbs .st-label { font-size: 10px; color: var(--sub); margin-top: 3px; line-height: 1.3;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .set-actions { display: flex; gap: 8px; margin-top: 10px; }
+  .set-actions button { flex: 1; padding: 8px; font-size: 13px; border-radius: 8px; border: 1px solid var(--line); background: none; color: var(--sub); }
+
+  /* 取り合わせ作成トレイ */
+  .tray {
+    display: none; position: fixed; left: 0; right: 0; bottom: 0; z-index: 60;
+    background: var(--card); border-top: 2px solid var(--accent); padding: 10px 12px 14px;
+    box-shadow: 0 -4px 14px rgba(58,50,38,.15);
+  }
+  .tray.open { display: block; }
+  .tray .tray-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+  .tray .tray-head .tt { font-size: 13px; color: var(--accent); letter-spacing: .1em; }
+  .tray-items { display: flex; gap: 7px; overflow-x: auto; min-height: 60px; -webkit-overflow-scrolling: touch; }
+  .tray-items img, .tray-items .t-no {
+    width: 56px; height: 56px; object-fit: cover; border-radius: 8px; border: 1px solid var(--line); flex-shrink: 0;
+    background: #eee9dd; display: flex; align-items: center; justify-content: center; color: var(--accent-light);
+  }
+  .tray-items .t-empty { color: var(--sub); font-size: 13px; align-self: center; }
+  .tray-btns { display: flex; gap: 8px; margin-top: 10px; }
+  .tray-btns button { flex: 1; padding: 11px; border-radius: 10px; border: none; font-size: 14px; }
+  .tray-save { background: var(--matcha); color: #fff; }
+  .tray-cancel { background: none; border: 1px solid var(--line) !important; color: var(--sub); }
+
+  .top-actions { display: flex; gap: 8px; margin-bottom: 12px; }
+  .top-actions button {
+    flex: 1; padding: 11px; border-radius: 10px; border: 1px dashed var(--accent-light);
+    background: none; color: var(--accent); font-size: 14px; letter-spacing: .08em;
+  }
+
+  /* データ管理 */
+  .data-bar { text-align: center; margin-top: 28px; padding-top: 14px; border-top: 1px solid var(--line); }
+  .data-bar button { background: none; border: none; color: var(--sub); font-size: 12px; text-decoration: underline; margin: 0 10px; }
+
+  .toast {
+    position: fixed; left: 50%; bottom: 100px; transform: translateX(-50%);
+    background: var(--ink); color: #fff; padding: 10px 22px; border-radius: 999px; font-size: 14px;
+    opacity: 0; transition: opacity .3s; z-index: 200; pointer-events: none; white-space: nowrap;
+  }
+  .toast.show { opacity: .95; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>茶 道 具 帖</h1>
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="items" onclick="switchTab('items')">道具一覧</button>
+    <button class="tab-btn" data-tab="sets" onclick="switchTab('sets')">取り合わせ</button>
+  </div>
+</header>
+
+<main>
+  <!-- ===== 道具一覧タブ ===== -->
+  <section id="tab-items">
+    <div class="toolbar">
+      <div class="search-row">
+        <input type="search" id="searchBox" placeholder="銘・作者・メモで検索" oninput="renderItems()">
+      </div>
+      <div class="chip-row" id="catChips"></div>
+      <div class="chip-row" id="seasonChips"></div>
+      <div class="chip-row" id="tagChips"></div>
+    </div>
+    <div class="grid" id="itemGrid"></div>
+    <div class="empty" id="itemEmpty" style="display:none">まだ道具が登録されていません。<br>右下の「＋」から最初の一品を登録しましょう。</div>
+    <div class="data-bar">
+      <button onclick="exportData()">データを書き出す（バックアップ）</button>
+      <button onclick="document.getElementById('importFile').click()">データを読み込む</button>
+      <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(event)">
+    </div>
+  </section>
+
+  <!-- ===== 取り合わせタブ ===== -->
+  <section id="tab-sets" style="display:none">
+    <div class="top-actions">
+      <button onclick="startCompose()">＋ 新しい取り合わせを作る</button>
+    </div>
+    <div id="setList"></div>
+    <div class="empty" id="setEmpty" style="display:none">保存された取り合わせはまだありません。<br>道具を選んで、お気に入りの組み合わせを残しましょう。</div>
+  </section>
+</main>
+
+<button class="fab" id="fab" onclick="openItemForm()">＋</button>
+
+<!-- ===== 取り合わせ作成トレイ ===== -->
+<div class="tray" id="tray">
+  <div class="tray-head">
+    <span class="tt">取り合わせを選択中 — 道具をタップして追加</span>
+    <span class="tt" id="trayCount">0点</span>
+  </div>
+  <div class="tray-items" id="trayItems"><span class="t-empty">道具一覧から選んでください</span></div>
+  <div class="tray-btns">
+    <button class="tray-cancel" onclick="cancelCompose()">やめる</button>
+    <button class="tray-save" onclick="openSetSave()">この組み合わせを保存</button>
+  </div>
+</div>
+
+<!-- ===== 道具フォーム ===== -->
+<div class="modal-bg" id="itemFormBg" onclick="if(event.target===this)closeModal('itemFormBg')">
+  <div class="modal">
+    <h2 id="itemFormTitle">道具の登録</h2>
+    <div class="field">
+      <label>写真</label>
+      <div class="photo-strip" id="photoStrip">
+        <button class="add-photo-btn" onclick="document.getElementById('photoInput').click()">＋</button>
+      </div>
+      <input type="file" id="photoInput" accept="image/*" multiple style="display:none" onchange="addPhotos(event)">
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label>カテゴリー *</label>
+        <select id="fCategory"></select>
+      </div>
+      <div class="field">
+        <label>季節</label>
+        <select id="fSeason"></select>
+      </div>
+    </div>
+    <div class="field">
+      <label>銘・名称 *</label>
+      <input type="text" id="fName" placeholder="例：赤楽茶碗 銘「早春」">
+    </div>
+    <div class="field">
+      <label>タグ（読点・カンマ区切りで複数可）</label>
+      <input type="text" id="fTags" placeholder="例：楽焼、春、初釜">
+      <div class="tag-suggest" id="tagSuggest"></div>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label>購入時期</label>
+        <input type="month" id="fPurchaseDate">
+      </div>
+      <div class="field">
+        <label>購入金額（円）</label>
+        <input type="number" id="fPrice" inputmode="numeric" placeholder="50000">
+      </div>
+    </div>
+    <div class="field">
+      <label>購入場所</label>
+      <input type="text" id="fPlace" placeholder="例：京都・○○堂">
+    </div>
+    <div class="field">
+      <label>メモ（作者、箱書き、由来など）</label>
+      <textarea id="fMemo"></textarea>
+    </div>
+    <div class="btns">
+      <button class="btn btn-primary" onclick="saveItem()">保存する</button>
+      <button class="btn btn-ghost" onclick="closeModal('itemFormBg')">閉じる</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 道具詳細 ===== -->
+<div class="modal-bg" id="detailBg" onclick="if(event.target===this)closeModal('detailBg')">
+  <div class="modal" id="detailBody"></div>
+</div>
+
+<!-- ===== 取り合わせ保存フォーム ===== -->
+<div class="modal-bg" id="setFormBg" onclick="if(event.target===this)closeModal('setFormBg')">
+  <div class="modal">
+    <h2>取り合わせを保存</h2>
+    <div class="set-thumbs" id="setFormThumbs"></div>
+    <div class="field" style="margin-top:12px">
+      <label>取り合わせの名前 *</label>
+      <input type="text" id="sName" placeholder="例：初釜の会 2027 / 秋の月見茶会">
+    </div>
+    <div class="field">
+      <label>メモ（趣向、季節、反省点など）</label>
+      <textarea id="sMemo"></textarea>
+    </div>
+    <div class="btns">
+      <button class="btn btn-primary" onclick="saveSet()">保存する</button>
+      <button class="btn btn-ghost" onclick="closeModal('setFormBg')">閉じる</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+const CATEGORIES = ["釜","茶碗","棗","香合","茶杓","柄杓","花入","皿","その他"];
+const SEASONS = ["通年","炉","風炉"];
+
+/* ================= IndexedDB ================= */
+let db;
+function openDB() {
+  return new Promise((res, rej) => {
+    const rq = indexedDB.open("chadogu-cho", 1);
+    rq.onupgradeneeded = e => {
+      const d = e.target.result;
+      if (!d.objectStoreNames.contains("items")) d.createObjectStore("items", { keyPath: "id" });
+      if (!d.objectStoreNames.contains("sets"))  d.createObjectStore("sets",  { keyPath: "id" });
+    };
+    rq.onsuccess = e => { db = e.target.result; res(); };
+    rq.onerror = () => rej(rq.error);
+  });
+}
+function dbAll(store) {
+  return new Promise((res, rej) => {
+    const rq = db.transaction(store).objectStore(store).getAll();
+    rq.onsuccess = () => res(rq.result);
+    rq.onerror = () => rej(rq.error);
+  });
+}
+function dbPut(store, obj) {
+  return new Promise((res, rej) => {
+    const tx = db.transaction(store, "readwrite");
+    tx.objectStore(store).put(obj);
+    tx.oncomplete = res; tx.onerror = () => rej(tx.error);
+  });
+}
+function dbDel(store, id) {
+  return new Promise((res, rej) => {
+    const tx = db.transaction(store, "readwrite");
+    tx.objectStore(store).delete(id);
+    tx.oncomplete = res; tx.onerror = () => rej(tx.error);
+  });
+}
+
+/* ================= 状態 ================= */
+let items = [], sets = [];
+let filterCat = "すべて", filterTag = null, filterSeason = null;
+let editingId = null, formPhotos = [];
+let composing = false, composeIds = [];
+
+const $ = id => document.getElementById(id);
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+const esc = s => (s || "").replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+
+function toast(msg) {
+  const t = $("toast"); t.textContent = msg; t.classList.add("show");
+  setTimeout(() => t.classList.remove("show"), 1800);
+}
+function closeModal(id) { $(id).classList.remove("open"); }
+function openModal(id) { $(id).classList.add("open"); }
+
+/* ================= タブ ================= */
+function switchTab(tab) {
+  document.querySelectorAll(".tab-btn").forEach(b => b.classList.toggle("active", b.dataset.tab === tab));
+  $("tab-items").style.display = tab === "items" ? "" : "none";
+  $("tab-sets").style.display  = tab === "sets"  ? "" : "none";
+  $("fab").style.display = (tab === "items" && !composing) ? "" : "none";
+  if (tab === "sets") renderSets();
+}
+
+/* ================= 道具一覧 ================= */
+function allTags() {
+  const s = new Set();
+  items.forEach(it => (it.tags || []).forEach(t => s.add(t)));
+  return [...s].sort((a, b) => a.localeCompare(b, "ja"));
+}
+
+function renderChips() {
+  const cats = ["すべて", ...CATEGORIES];
+  $("catChips").innerHTML = cats.map(c =>
+    `<button class="chip ${filterCat === c ? "active" : ""}" onclick="setCatFilter('${esc(c)}')">${esc(c)}</button>`).join("");
+  $("seasonChips").innerHTML = ["炉","風炉"].map(s =>
+    `<button class="chip season-chip ${filterSeason === s ? "active" : ""}" onclick="setSeasonFilter('${s}')">${s}の季節</button>`).join("");
+  const tags = allTags();
+  $("tagChips").innerHTML = tags.length
+    ? tags.map(t => `<button class="chip tag-chip ${filterTag === t ? "active" : ""}" onclick="setTagFilter('${esc(t)}')">${esc(t)}</button>`).join("")
+    : "";
+}
+function setCatFilter(c) { filterCat = c; renderItems(); }
+function setTagFilter(t) { filterTag = (filterTag === t) ? null : t; renderItems(); }
+function setSeasonFilter(s) { filterSeason = (filterSeason === s) ? null : s; renderItems(); }
+
+function catOrder(c) { const i = CATEGORIES.indexOf(c); return i < 0 ? 99 : i; }
+
+function filteredItems() {
+  const q = $("searchBox").value.trim().toLowerCase();
+  return items
+    .filter(it => filterCat === "すべて" || it.category === filterCat)
+    .filter(it => !filterSeason || (it.season || "通年") === filterSeason || (it.season || "通年") === "通年")
+    .filter(it => !filterTag || (it.tags || []).includes(filterTag))
+    .filter(it => !q || [it.name, it.memo, it.place, ...(it.tags || [])].join(" ").toLowerCase().includes(q))
+    .sort((a, b) => catOrder(a.category) - catOrder(b.category) || (b.createdAt || 0) - (a.createdAt || 0));
+}
+
+function cardHTML(it, selectable) {
+  const sel = selectable && composeIds.includes(it.id);
+  const photo = it.photos && it.photos[0]
+    ? `<img class="thumb" src="${it.photos[0]}" alt="">`
+    : `<div class="no-photo">${esc(it.category[0] || "茶")}</div>`;
+  const tags = (it.tags || []).slice(0, 3).map(t => `<span>${esc(t)}</span>`).join("");
+  return `<div class="card ${selectable ? "selectable" : ""} ${sel ? "selected" : ""}" onclick="cardTap('${it.id}')">
+    <div class="check-mark">✓</div>${photo}
+    <div class="info">
+      <div class="cat">${esc(it.category)}${it.season && it.season !== "通年" ? "・" + esc(it.season) : ""}</div>
+      <div class="name">${esc(it.name)}</div>
+      <div class="tags">${tags}</div>
+    </div></div>`;
+}
+
+function renderItems() {
+  renderChips();
+  const list = filteredItems();
+  $("itemGrid").innerHTML = list.map(it => cardHTML(it, composing)).join("");
+  $("itemEmpty").style.display = (items.length === 0) ? "" : "none";
+}
+
+function cardTap(id) {
+  if (composing) {
+    const i = composeIds.indexOf(id);
+    if (i >= 0) composeIds.splice(i, 1); else composeIds.push(id);
+    renderItems(); renderTray();
+  } else {
+    openDetail(id);
+  }
+}
+
+/* ================= 道具フォーム ================= */
+function openItemForm(id) {
+  editingId = id || null;
+  const it = id ? items.find(x => x.id === id) : null;
+  $("itemFormTitle").textContent = it ? "道具の編集" : "道具の登録";
+  $("fCategory").innerHTML = CATEGORIES.map(c => `<option ${it && it.category === c ? "selected" : ""}>${c}</option>`).join("");
+  $("fSeason").innerHTML = SEASONS.map(s => `<option ${it && (it.season || "通年") === s ? "selected" : ""}>${s}</option>`).join("");
+  $("fName").value = it ? it.name : "";
+  $("fTags").value = it ? (it.tags || []).join("、") : "";
+  $("fPurchaseDate").value = it ? (it.purchaseDate || "") : "";
+  $("fPrice").value = it && it.price != null ? it.price : "";
+  $("fPlace").value = it ? (it.place || "") : "";
+  $("fMemo").value = it ? (it.memo || "") : "";
+  formPhotos = it ? [...(it.photos || [])] : [];
+  renderPhotoStrip();
+  const tags = allTags();
+  $("tagSuggest").innerHTML = tags.slice(0, 12).map(t =>
+    `<button onclick="appendTag('${esc(t)}')">${esc(t)}</button>`).join("");
+  openModal("itemFormBg");
+}
+
+function appendTag(t) {
+  const cur = $("fTags").value.trim();
+  const list = cur ? cur.split(/[、,]/).map(s => s.trim()).filter(Boolean) : [];
+  if (!list.includes(t)) list.push(t);
+  $("fTags").value = list.join("、");
+}
+
+function renderPhotoStrip() {
+  const strip = $("photoStrip");
+  strip.innerHTML = formPhotos.map((p, i) =>
+    `<div class="ph"><img src="${p}" alt=""><button class="del-ph" onclick="formPhotos.splice(${i},1);renderPhotoStrip()">×</button></div>`
+  ).join("") + `<button class="add-photo-btn" onclick="document.getElementById('photoInput').click()">＋</button>`;
+}
+
+function addPhotos(ev) {
+  const files = [...ev.target.files];
+  ev.target.value = "";
+  files.forEach(f => {
+    const rd = new FileReader();
+    rd.onload = () => compressImage(rd.result, url => { formPhotos.push(url); renderPhotoStrip(); });
+    rd.readAsDataURL(f);
+  });
+}
+
+function compressImage(dataURL, cb) {
+  const img = new Image();
+  img.onload = () => {
+    const MAX = 1000;
+    let { width: w, height: h } = img;
+    if (Math.max(w, h) > MAX) { const r = MAX / Math.max(w, h); w = Math.round(w * r); h = Math.round(h * r); }
+    const cv = document.createElement("canvas");
+    cv.width = w; cv.height = h;
+    cv.getContext("2d").drawImage(img, 0, 0, w, h);
+    cb(cv.toDataURL("image/jpeg", 0.8));
+  };
+  img.src = dataURL;
+}
+
+async function saveItem() {
+  const name = $("fName").value.trim();
+  if (!name) { toast("銘・名称を入力してください"); return; }
+  const old = editingId ? items.find(x => x.id === editingId) : null;
+  const it = {
+    id: editingId || uid(),
+    category: $("fCategory").value,
+    season: $("fSeason").value,
+    name,
+    tags: $("fTags").value.split(/[、,]/).map(s => s.trim()).filter(Boolean),
+    purchaseDate: $("fPurchaseDate").value,
+    price: $("fPrice").value === "" ? null : Number($("fPrice").value),
+    place: $("fPlace").value.trim(),
+    memo: $("fMemo").value.trim(),
+    photos: formPhotos,
+    careLog: old ? (old.careLog || []) : [],
+    createdAt: old ? old.createdAt : Date.now()
+  };
+  await dbPut("items", it);
+  if (editingId) items = items.map(x => x.id === it.id ? it : x); else items.push(it);
+  closeModal("itemFormBg");
+  renderItems();
+  toast(editingId ? "更新しました" : "登録しました");
+}
+
+/* ================= 道具詳細 ================= */
+function fmtPrice(p) { return p == null ? "" : "¥" + Number(p).toLocaleString("ja-JP"); }
+function fmtMonth(m) {
+  if (!m) return "";
+  const [y, mo] = m.split("-");
+  return `${y}年${Number(mo)}月`;
+}
+
+function openDetail(id) {
+  const it = items.find(x => x.id === id);
+  if (!it) return;
+  const photos = (it.photos || []).map(p => `<img src="${p}" alt="">`).join("");
+  const kv = (k, v) => v ? `<div class="kv"><div class="k">${k}</div><div class="v">${esc(v)}</div></div>` : "";
+  const care = (it.careLog || []).slice().sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+  const careHTML = care.map((c, i) =>
+    `<div class="care-item"><span class="cd">${esc(c.date || "")}</span><span class="ct">${esc(c.text)}</span>
+     <button class="cx" onclick="delCare('${it.id}',${i})">×</button></div>`).join("");
+  const today = new Date().toISOString().slice(0, 10);
+  $("detailBody").innerHTML = `
+    ${photos ? `<div class="detail-photos">${photos}</div>` : ""}
+    <div class="detail-cat">${esc(it.category)}${it.season && it.season !== "通年" ? "・" + esc(it.season) : ""}</div>
+    <div class="detail-title">${esc(it.name)}</div>
+    <div class="detail-tags">${(it.tags || []).map(t => `<span>${esc(t)}</span>`).join("")}</div>
+    ${kv("季節", it.season || "通年")}
+    ${kv("購入時期", fmtMonth(it.purchaseDate))}
+    ${kv("購入場所", it.place)}
+    ${kv("購入金額", fmtPrice(it.price))}
+    ${kv("メモ", it.memo)}
+    <h3 class="sec">手入れの履歴</h3>
+    <div class="care-list">${careHTML || `<div style="color:var(--sub);font-size:13px;padding:4px 2px">記録はまだありません</div>`}</div>
+    <div class="care-add">
+      <input type="date" id="careDate" value="${today}">
+      <input type="text" id="careText" placeholder="例：帛紗で乾拭き、箱の虫干し">
+      <button onclick="addCare('${it.id}')">追加</button>
+    </div>
+    <div class="btns">
+      <button class="btn btn-primary" onclick="closeModal('detailBg');openItemForm('${it.id}')">編集する</button>
+      <button class="btn btn-ghost" onclick="closeModal('detailBg')">閉じる</button>
+      <button class="btn-danger-link" onclick="deleteItem('${it.id}')">この道具を削除する</button>
+    </div>`;
+  openModal("detailBg");
+}
+
+async function addCare(id) {
+  const it = items.find(x => x.id === id);
+  const text = $("careText").value.trim();
+  if (!text) { toast("内容を入力してください"); return; }
+  it.careLog = it.careLog || [];
+  it.careLog.push({ date: $("careDate").value, text });
+  await dbPut("items", it);
+  openDetail(id);
+  toast("手入れを記録しました");
+}
+
+async function delCare(id, sortedIndex) {
+  const it = items.find(x => x.id === id);
+  const sorted = (it.careLog || []).slice().sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+  const target = sorted[sortedIndex];
+  it.careLog = it.careLog.filter(c => c !== target);
+  await dbPut("items", it);
+  openDetail(id);
+}
+
+async function deleteItem(id) {
+  if (!confirm("この道具を削除しますか？（取り合わせからも外れます）")) return;
+  await dbDel("items", id);
+  items = items.filter(x => x.id !== id);
+  for (const s of sets) {
+    if (s.itemIds.includes(id)) {
+      s.itemIds = s.itemIds.filter(x => x !== id);
+      await dbPut("sets", s);
+    }
+  }
+  closeModal("detailBg");
+  renderItems();
+  toast("削除しました");
+}
+
+/* ================= 取り合わせ ================= */
+let editingSetId = null;
+
+function startCompose(setId) {
+  editingSetId = setId || null;
+  const s = setId ? sets.find(x => x.id === setId) : null;
+  composeIds = s ? s.itemIds.filter(id => items.some(it => it.id === id)) : [];
+  composing = true;
+  switchTab("items");
+  $("tray").classList.add("open");
+  $("fab").style.display = "none";
+  document.body.style.paddingBottom = "180px";
+  renderItems(); renderTray();
+  toast("取り合わせる道具をタップで選択");
+}
+
+function cancelCompose() {
+  composing = false; composeIds = []; editingSetId = null;
+  $("tray").classList.remove("open");
+  document.body.style.paddingBottom = "";
+  $("fab").style.display = "";
+  renderItems();
+}
+
+function renderTray() {
+  $("trayCount").textContent = composeIds.length + "点";
+  const html = composeIds.map(id => {
+    const it = items.find(x => x.id === id);
+    if (!it) return "";
+    return it.photos && it.photos[0]
+      ? `<img src="${it.photos[0]}" alt="" onclick="cardTap('${id}')">`
+      : `<div class="t-no" onclick="cardTap('${id}')">${esc(it.category[0])}</div>`;
+  }).join("");
+  $("trayItems").innerHTML = html || `<span class="t-empty">道具一覧から選んでください</span>`;
+}
+
+function setThumbsHTML(itemIds) {
+  return itemIds.map(id => {
+    const it = items.find(x => x.id === id);
+    if (!it) return "";
+    const img = it.photos && it.photos[0]
+      ? `<img src="${it.photos[0]}" alt="" onclick="openDetail('${id}')">`
+      : `<div class="st-no" onclick="openDetail('${id}')">${esc(it.category[0])}</div>`;
+    return `<div class="st">${img}<div class="st-label">${esc(it.name)}</div></div>`;
+  }).join("");
+}
+
+function openSetSave() {
+  if (composeIds.length === 0) { toast("道具を1点以上選んでください"); return; }
+  const s = editingSetId ? sets.find(x => x.id === editingSetId) : null;
+  $("sName").value = s ? s.name : "";
+  $("sMemo").value = s ? (s.memo || "") : "";
+  $("setFormThumbs").innerHTML = setThumbsHTML(composeIds);
+  openModal("setFormBg");
+}
+
+async function saveSet() {
+  const name = $("sName").value.trim();
+  if (!name) { toast("名前を入力してください"); return; }
+  const old = editingSetId ? sets.find(x => x.id === editingSetId) : null;
+  const s = {
+    id: editingSetId || uid(),
+    name,
+    memo: $("sMemo").value.trim(),
+    itemIds: [...composeIds],
+    createdAt: old ? old.createdAt : Date.now()
+  };
+  await dbPut("sets", s);
+  if (old) sets = sets.map(x => x.id === s.id ? s : x); else sets.push(s);
+  closeModal("setFormBg");
+  cancelCompose();
+  switchTab("sets");
+  toast("取り合わせを保存しました");
+}
+
+function renderSets() {
+  const sorted = sets.slice().sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+  $("setList").innerHTML = sorted.map(s => `
+    <div class="set-card">
+      <div class="set-name">${esc(s.name)}</div>
+      ${s.memo ? `<div class="set-memo">${esc(s.memo)}</div>` : ""}
+      <div class="set-thumbs">${setThumbsHTML(s.itemIds)}</div>
+      <div class="set-actions">
+        <button onclick="startCompose('${s.id}')">道具を選び直す</button>
+        <button onclick="deleteSet('${s.id}')">削除</button>
+      </div>
+    </div>`).join("");
+  $("setEmpty").style.display = sets.length === 0 ? "" : "none";
+}
+
+async function deleteSet(id) {
+  if (!confirm("この取り合わせを削除しますか？（道具自体は残ります）")) return;
+  await dbDel("sets", id);
+  sets = sets.filter(x => x.id !== id);
+  renderSets();
+  toast("削除しました");
+}
+
+/* ================= バックアップ ================= */
+function exportData() {
+  const blob = new Blob([JSON.stringify({ version: 1, items, sets }, null, 1)], { type: "application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `茶道具帖バックアップ_${new Date().toISOString().slice(0, 10)}.json`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+  toast("書き出しました");
+}
+
+async function importData(ev) {
+  const file = ev.target.files[0];
+  ev.target.value = "";
+  if (!file) return;
+  try {
+    const data = JSON.parse(await file.text());
+    if (!Array.isArray(data.items)) throw new Error("形式が違います");
+    if (!confirm(`道具${data.items.length}点・取り合わせ${(data.sets || []).length}件を読み込みます。\n同じIDのデータは上書きされます。よろしいですか？`)) return;
+    for (const it of data.items) { await dbPut("items", it); }
+    for (const s of (data.sets || [])) { await dbPut("sets", s); }
+    items = await dbAll("items");
+    sets = await dbAll("sets");
+    renderItems(); renderSets();
+    toast("読み込みました");
+  } catch (e) {
+    alert("読み込みに失敗しました：" + e.message);
+  }
+}
+
+/* ================= 起動 ================= */
+(async () => {
+  await openDB();
+  items = await dbAll("items");
+  sets = await dbAll("sets");
+  renderItems();
+})();
+</script>
+</body>
+</html>
