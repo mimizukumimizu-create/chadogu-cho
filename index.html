@@ -232,6 +232,31 @@
   .data-bar { text-align: center; margin-top: 28px; padding-top: 14px; border-top: 1px solid var(--line); }
   .data-bar button { background: none; border: none; color: var(--sub); font-size: 12px; text-decoration: underline; margin: 0 10px; }
 
+  /* ===== 写真の拡大表示 ===== */
+  .lightbox {
+    display: none; position: fixed; inset: 0; background: rgba(24,19,12,.93); z-index: 300;
+    align-items: center; justify-content: center;
+  }
+  .lightbox.open { display: flex; }
+  .lightbox img {
+    max-width: 100vw; max-height: 92vh; object-fit: contain;
+  }
+  .lb-close {
+    position: absolute; top: 14px; right: 14px; width: 42px; height: 42px; border-radius: 50%;
+    background: rgba(255,255,255,.18); color: #fff; border: none; font-size: 22px; z-index: 2;
+  }
+  .lb-nav {
+    position: absolute; top: 50%; transform: translateY(-50%); width: 46px; height: 62px;
+    background: rgba(255,255,255,.15); color: #fff; border: none; font-size: 26px; z-index: 2;
+  }
+  .lb-prev { left: 0; border-radius: 0 12px 12px 0; }
+  .lb-next { right: 0; border-radius: 12px 0 0 12px; }
+  .lb-count {
+    position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%);
+    color: rgba(255,255,255,.85); font-size: 14px; letter-spacing: .15em;
+  }
+  .detail-photos img { cursor: zoom-in; }
+
   .toast {
     position: fixed; left: 50%; bottom: 100px; transform: translateX(-50%);
     background: var(--ink); color: #fff; padding: 10px 22px; border-radius: 999px; font-size: 14px;
@@ -373,6 +398,15 @@
       <button class="btn btn-ghost" onclick="closeModal('setFormBg')">閉じる</button>
     </div>
   </div>
+</div>
+
+<!-- ===== 写真の拡大表示 ===== -->
+<div class="lightbox" id="lightbox" onclick="if(event.target===this)closeLightbox()">
+  <button class="lb-close" onclick="closeLightbox()">×</button>
+  <button class="lb-nav lb-prev" id="lbPrev" onclick="lbMove(-1)">‹</button>
+  <img id="lbImg" src="" alt="">
+  <button class="lb-nav lb-next" id="lbNext" onclick="lbMove(1)">›</button>
+  <div class="lb-count" id="lbCount"></div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -594,6 +628,39 @@ async function saveItem() {
   toast(editingId ? "更新しました" : "登録しました");
 }
 
+/* ================= 写真の拡大表示 ================= */
+let lbPhotos = [], lbIndex = 0;
+
+function openLightbox(itemId, index) {
+  const it = items.find(x => x.id === itemId);
+  if (!it || !it.photos || !it.photos.length) return;
+  lbPhotos = it.photos; lbIndex = index || 0;
+  lbShow();
+  $("lightbox").classList.add("open");
+}
+function lbShow() {
+  $("lbImg").src = lbPhotos[lbIndex];
+  const multi = lbPhotos.length > 1;
+  $("lbPrev").style.display = multi ? "" : "none";
+  $("lbNext").style.display = multi ? "" : "none";
+  $("lbCount").textContent = multi ? `${lbIndex + 1} / ${lbPhotos.length}` : "";
+}
+function lbMove(d) {
+  lbIndex = (lbIndex + d + lbPhotos.length) % lbPhotos.length;
+  lbShow();
+}
+function closeLightbox() { $("lightbox").classList.remove("open"); }
+
+// スワイプで前後の写真へ
+let lbTouchX = null;
+$("lightbox").addEventListener("touchstart", e => { lbTouchX = e.touches[0].clientX; }, { passive: true });
+$("lightbox").addEventListener("touchend", e => {
+  if (lbTouchX === null) return;
+  const dx = e.changedTouches[0].clientX - lbTouchX;
+  lbTouchX = null;
+  if (Math.abs(dx) > 50 && lbPhotos.length > 1) lbMove(dx < 0 ? 1 : -1);
+}, { passive: true });
+
 /* ================= 道具詳細 ================= */
 function fmtPrice(p) { return p == null ? "" : "¥" + Number(p).toLocaleString("ja-JP"); }
 function fmtMonth(m) {
@@ -605,7 +672,7 @@ function fmtMonth(m) {
 function openDetail(id) {
   const it = items.find(x => x.id === id);
   if (!it) return;
-  const photos = (it.photos || []).map(p => `<img src="${p}" alt="">`).join("");
+  const photos = (it.photos || []).map((p, i) => `<img src="${p}" alt="" onclick="openLightbox('${it.id}',${i})">`).join("");
   const kv = (k, v) => v ? `<div class="kv"><div class="k">${k}</div><div class="v">${esc(v)}</div></div>` : "";
   const care = (it.careLog || []).slice().sort((a, b) => (b.date || "").localeCompare(a.date || ""));
   const careHTML = care.map((c, i) =>
